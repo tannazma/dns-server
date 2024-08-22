@@ -20,7 +20,7 @@ socket.bind('::', 53)
 #This binds the socket to all available interfaces (:: for IPv6) on port 53, the standard DNS port.
 
 def reply_to(query)
-  id = query[0..1]
+  # id = query[0..1]
 
   ## TODO: replace me with actual DNS implementation
   # See https://datatracker.ietf.org/doc/html/rfc1035
@@ -28,12 +28,24 @@ def reply_to(query)
 
   #To Implement a Real DNS Server, You would need to replace the reply_to method with code that can parse the DNS query and generate a valid DNS response. 
   #This would involve understanding the DNS protocol as described in RFC 1035.
+  buf = StringIO.new(query)
   
-  return id + "\x81\xa0\x00\x01" \
-"\x00\x01\x00\x00\x00\x01\x07\x65\x78\x61\x6d\x70\x6c\x65\x03\x63" \
-"\x6f\x6d\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x0a" \
-"\x3f\x00\x04\x5d\xb8\xd7\x0e\x00\x00\x29\x04\xd0\x00\x00\x00\x00" \
-"\x00\x00".b
+  # Parse the DNS header
+  header = DNSHeader.new(buf)
+  
+  # Parse the DNS question section
+  question = DNSQuestion.new(buf)
+  
+  # Create the DNS response
+  response = DNSResponse.new(header.id, question)
+  
+  # Build the full DNS response packet
+  return response.build_response
+#   return id + "\x81\xa0\x00\x01" \
+# "\x00\x01\x00\x00\x00\x01\x07\x65\x78\x61\x6d\x70\x6c\x65\x03\x63" \
+# "\x6f\x6d\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x0a" \
+# "\x3f\x00\x04\x5d\xb8\xd7\x0e\x00\x00\x29\x04\xd0\x00\x00\x00\x00" \
+# "\x00\x00".b
 
 end
 
@@ -42,6 +54,9 @@ while true
   #and client contains information about the sender and The received message is printed in a hexadecimal format using the xxd command.
 
   message, client = socket.recvfrom(MAX_UDP_LENGTH)
+
+  #hex dump represents a DNS response for an A record query for example.com, returning the IP address 93.184.216.14
+
 
   puts 'Received:'
   hexdump, _status = Open3.capture2('xxd', stdin_data: message)
