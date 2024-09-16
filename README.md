@@ -30,8 +30,42 @@ This project implements a basic DNS server using Ruby. The server listens for DN
 
 ## Usage
 
-1. **Run the DNS server**:
+1. **Run the DNS server on mac**:
 
+    Run the DNS server with root privileges:
+
+    Since macOS restricts binding to privileged ports (below 1024), you'll need to run the script with sudo:
+
+    ```sh
+    sudo ./dns_server.rb
+    ```
+    Ensure the script has executable permissions:
+
+    ```sh
+    chmod +x dns_server.rb
+    ```
+ **Verify the server is running**:
+    The server will start listening for DNS queries on port 53. You can test it using dig or another DNS query tool:
+
+    ```sh
+    dig @localhost example.com
+    ```
+    The server will print the received query and the response in hexadecimal format.
+
+    Alternative for non-root users:
+
+    If you do not want to run the script as root, you can bind the server to a higher, non-privileged port (e.g., 8053). Edit the script to:
+
+    ```sh
+    socket.bind('::', 8053)
+    ```
+    Then test with:
+
+    ```sh
+    dig @localhost -p 8053 example.com
+    ```
+
+2. **Run the DNS server in Debian (Linux)**:
     ```sh
     ./dns_server.rb
     ```
@@ -42,7 +76,7 @@ This project implements a basic DNS server using Ruby. The server listens for DN
     chmod +x dns_server.rb
     ```
 
-2. **Verify the server is running**:
+ **Verify the server is running**:
 
     The server will start listening for DNS queries on port 53. You can test it using `dig` or another DNS query tool:
 
