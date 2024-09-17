@@ -21,6 +21,66 @@ socket = UDPSocket.new :INET6
 socket.bind('::', 8053)
 #This binds the socket to all available interfaces (:: for IPv6) on port 53, the standard DNS port.
 
+class DNSHeader
+  attr_reader :id, :flags, :num_questions, :num_answers, :num_auth, :num_additional
+  
+  def initialize(buf)
+    hdr = buf.read(12)
+    @id, @flags, @num_questions, @num_answers, @num_auth, @num_additional = hdr.unpack('nnnnnn')
+  end
+end
+
+class DNSQuestion
+  attr_reader :qname, :qtype, :qclass
+
+  def initialize(buf)
+    @qname = parse_name(buf) # Parse domain name
+    @qtype = buf.read(2).unpack('n').first # Type (e.g., A, MX)
+    @qclass = buf.read(2).unpack('n').first # Class (usually IN for Internet)
+  end
+
+  def parse_name(buf)
+    name = []
+    while (len = buf.read(1).unpack('C').first) > 0
+      name << buf.read(len)
+    end
+    name.join(".")
+  end
+end
+
+class DNSResponse
+  def initialize(id, question)
+    @id = id
+    @question = question
+    @answers = []
+  end
+
+  def build_response
+    header = [@id, 0x8180, 1, 1, 0, 0].pack('n*').force_encoding('ASCII-8BIT') # Standard response header
+    question = build_question_section.force_encoding('ASCII-8BIT')
+    answer = build_answer_section.force_encoding('ASCII-8BIT')
+    (header + question + answer).force_encoding('ASCII-8BIT') # Ensure the whole packet is ASCII-8BIT
+  end
+
+  def build_question_section
+    qname = @question.qname.split(".").map { |part| [part.length, part].pack('Ca*') }.join.force_encoding('ASCII-8BIT') + "\0".force_encoding('ASCII-8BIT')
+    qtype = [@question.qtype].pack('n').force_encoding('ASCII-8BIT')
+    qclass = [@question.qclass].pack('n').force_encoding('ASCII-8BIT')
+    qname + qtype + qclass
+  end
+
+  def build_answer_section
+    # Example response for an A record (IPv4 address)
+    ttl = [3600].pack('N').force_encoding('ASCII-8BIT') # Time to live
+    rdata = [127, 0, 0, 1].pack('C4').force_encoding('ASCII-8BIT') # Example IP (localhost)
+    rname = "\xc0\x0c".force_encoding('ASCII-8BIT') # Pointer to domain name in question
+    rtype = [1].pack('n').force_encoding('ASCII-8BIT') # A record
+    rclass = [1].pack('n').force_encoding('ASCII-8BIT') # IN (Internet)
+    rdlength = [rdata.length].pack('n').force_encoding('ASCII-8BIT')
+    rname + rtype + rclass + ttl + rdlength + rdata
+  end
+end
+
 def reply_to(query)
   buf = StringIO.new(query)
   
