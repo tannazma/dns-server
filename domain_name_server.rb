@@ -2,6 +2,7 @@
 
 require 'socket'
 require 'open3'
+require 'resolv' # This will help us resolve the actual IP for the domain
 
 #The script sets up a UDP server that listens for DNS queries on port 53.
 #When a query is received, it prints the query in a human-readable format (hex dump).
@@ -52,7 +53,6 @@ class DNSResponse
   def initialize(id, question)
     @id = id
     @question = question
-    @answers = []
   end
 
   def build_response
@@ -70,14 +70,31 @@ class DNSResponse
   end
 
   def build_answer_section
-    # Example response for an A record (IPv4 address)
+    ip_address = resolve_domain(@question.qname) # Get the real IP address
+
+    # Initialize rdata before the conditional block
+    rdata = nil
+    
+    if ip_address.nil?
+      rdata = [127, 0, 0, 1].pack('C4') # Fallback to localhost if domain can't be resolved
+    else
+      rdata = ip_address.split('.').map(&:to_i).pack('C4') # Convert IP to binary format
+    end
+
     ttl = [3600].pack('N').force_encoding('ASCII-8BIT') # Time to live
-    rdata = [127, 0, 0, 1].pack('C4').force_encoding('ASCII-8BIT') # Example IP (localhost)
     rname = "\xc0\x0c".force_encoding('ASCII-8BIT') # Pointer to domain name in question
     rtype = [1].pack('n').force_encoding('ASCII-8BIT') # A record
     rclass = [1].pack('n').force_encoding('ASCII-8BIT') # IN (Internet)
     rdlength = [rdata.length].pack('n').force_encoding('ASCII-8BIT')
     rname + rtype + rclass + ttl + rdlength + rdata
+  end
+
+  def resolve_domain(domain)
+    begin
+      Resolv.getaddress(domain) # Use Resolv to get the real IP address
+    rescue Resolv::ResolvError
+      nil # Return nil if the domain can't be resolved
+    end
   end
 end
 
