@@ -1,33 +1,27 @@
+#!/usr/bin/env ruby
+
+require 'socket'
+require 'open3'
+
 #The script sets up a UDP server that listens for DNS queries on port 53.
 #When a query is received, it prints the query in a human-readable format (hex dump).
 #It generates a fixed DNS response (as a placeholder) and sends it back to the client.
 #This loop continues indefinitely, handling incoming DNS queries
 
-#!/usr/bin/env ruby
 
 #This is a shebang line that tells the system to run this script using the Ruby interpreter.
 #socket library is necessary for network communication
 #open3 library which allows you to run external commands and capture their output.
-require 'socket'
-require 'open3'
 
 MAX_UDP_LENGTH = 4096
 #This sets the maximum length of a UDP packet that the server will handle
 
 socket = UDPSocket.new :INET6
 #This creates a new UDP socket that can handle IPv6 addresses
-socket.bind('::', 53)
+socket.bind('::', 8053)
 #This binds the socket to all available interfaces (:: for IPv6) on port 53, the standard DNS port.
 
 def reply_to(query)
-  # id = query[0..1]
-
-  ## TODO: replace me with actual DNS implementation
-  # See https://datatracker.ietf.org/doc/html/rfc1035
-
-
-  #To Implement a Real DNS Server, You would need to replace the reply_to method with code that can parse the DNS query and generate a valid DNS response. 
-  #This would involve understanding the DNS protocol as described in RFC 1035.
   buf = StringIO.new(query)
   
   # Parse the DNS header
@@ -41,12 +35,6 @@ def reply_to(query)
   
   # Build the full DNS response packet
   return response.build_response
-#   return id + "\x81\xa0\x00\x01" \
-# "\x00\x01\x00\x00\x00\x01\x07\x65\x78\x61\x6d\x70\x6c\x65\x03\x63" \
-# "\x6f\x6d\x00\x00\x01\x00\x01\xc0\x0c\x00\x01\x00\x01\x00\x00\x0a" \
-# "\x3f\x00\x04\x5d\xb8\xd7\x0e\x00\x00\x29\x04\xd0\x00\x00\x00\x00" \
-# "\x00\x00".b
-
 end
 
 while true
@@ -56,7 +44,6 @@ while true
   message, client = socket.recvfrom(MAX_UDP_LENGTH)
 
   #hex dump represents a DNS response for an A record query for example.com, returning the IP address 93.184.216.14
-
 
   puts 'Received:'
   hexdump, _status = Open3.capture2('xxd', stdin_data: message)
