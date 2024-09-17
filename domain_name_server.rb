@@ -13,9 +13,24 @@ socket.bind('::', 8053) #This binds the socket to all available interfaces (:: f
 class DNSHeader
   attr_reader :id, :flags, :num_questions, :num_answers, :num_auth, :num_additional
   
-  def initialize(buf)
+  def initialize(id, flags, num_questions, num_answers, num_auth, num_additional)
+    @id = id
+    @flags = flags
+    @num_questions = num_questions
+    @num_answers = num_answers
+    @num_auth = num_auth
+    @num_additional = num_additional
+  end
+
+  def self.from_buffer(buf)
     hdr = buf.read(12)
-    @id, @flags, @num_questions, @num_answers, @num_auth, @num_additional = hdr.unpack('nnnnnn')
+    id, flags, num_questions, num_answers, num_auth, num_additional = hdr.unpack('nnnnnn')
+
+    DNSHeader.new(id, flags, num_questions, num_answers, num_auth, num_additional)
+  end
+
+  def as_bytes
+    [@id, @flags, @num_questions, @num_answers, @num_auth, @num_additional].pack('n*').force_encoding('ASCII-8BIT')
   end
 end
 
@@ -44,7 +59,7 @@ class DNSResponse
   end
 
   def build_response
-    header = [@id, 0x8180, 1, 1, 0, 0].pack('n*').force_encoding('ASCII-8BIT') # Standard response header
+    header = DNSHeader.new(@id, 0x8180, 1, 1, 0, 0).as_bytes # Standard response header
     question = build_question_section.force_encoding('ASCII-8BIT')
     answer = build_answer_section.force_encoding('ASCII-8BIT')
     (header + question + answer).force_encoding('ASCII-8BIT') # Ensure the whole packet is ASCII-8BIT
@@ -87,7 +102,7 @@ end
 def reply_to(query)
   buf = StringIO.new(query)
 
-  header = DNSHeader.new(buf) # Parse the DNS header
+  header = DNSHeader.from_buffer(buf) # Parse the DNS header
   
   question = DNSQuestion.new(buf) # Parse the DNS question section
   
